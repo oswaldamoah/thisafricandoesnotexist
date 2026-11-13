@@ -1,99 +1,125 @@
 # This African Does Not Exist
 
-Realistic AI portraits of modern Africans, one per refresh, in the style of thispersondoesnotexist.com.
-Every face is built from `public/phenotypes.json`: region weights, age cohorts, facial anatomy, skin tone,
-modern hair and clothing, city backgrounds, candid expressions, skin imperfections and camera physics.
-The images come from free models (Alibaba, Cloudflare, Zhipu, Pollinations), with optional paid and local extras.
+There was no **This African Does Not Exist**, till now.
 
-## Run it
+![This African Does Not Exist screenshot](./screenshot.png)
+
+This is a public, open invitation to explore realistic, AI-generated portraits of
+modern Africans: one face at a time, with no real person behind the image. If
+this idea is useful, interesting, or incomplete, please fork it, clone it,
+improve it, and share what you build.
+
+The project is inspired by `thispersondoesnotexist.com`, but it is designed
+around African regions, cities, appearances, clothing, hair, lighting, and
+everyday photographic details. The goal is not to represent every African
+person or culture perfectly. It is to provide a transparent, extensible
+starting point for better representation and experimentation.
+
+## Public URL
+Try  [thisafricandoesnotexist](https://oswaldamoah.github.io/thisafricandoesnotexist/) today
+
+## The challenge
+
+thisafricandoesnotexist currently does not utilize a model trained specifically for generating african nonexistent (unless it happens to look like someone) personalities
+
+Most image-generation models that produce realistic faces have not been trained
+with enough diverse African face data. The consequence is visible: African
+faces can be represented less accurately, with limited variation, distorted
+features, or imported assumptions about what an African person should look
+like. Better prompting can help, but it cannot replace better training data and
+better models.
+
+That work still needs to be done. More representative, consented, and
+responsibly sourced African face data—and models evaluated against that
+diversity—would make this project a better reality. This repository is a small
+step toward making the gap visible and inviting people to help close it.
+
+## Try it locally
+
+Requirements: Node.js 20 or newer.
 
 ```bash
 npm install
-cp .env.example .env      # add any keys you have (none are required)
-npm start                 # http://localhost:3000
+copy .env.example .env
+npm start
 ```
 
-With no keys, it uses Pollinations only (about 1 face every 16 seconds). Each key you add brings in another
-model and speeds up generation. The server builds up a pool of faces in `data/`, so after the first few
-minutes every refresh is instant.
+Open <http://localhost:3000>. No API keys are required: Pollinations is the
+default fallback provider, although generation may be slow.
 
-Test without any network: `MOCK=1 npm start` (generates placeholder images).
-See some prompts: `npm run test-prompt`.
+For an offline pipeline check:
+
+```bash
+npm run mock
+```
+
+To preview generated prompts without making images:
+
+```bash
+npm run test-prompt
+```
 
 ## How it works
 
-```
-phenotypes.json ──► promptEngine.js ──► (optional) free LLM polishes the prompt
-                     weighted sampling          DeepSeek via OpenRouter / ModelScope / GLM
-                                                 │
-                     ┌───────────────────────────┘
-                     ▼
-     image providers, rotated with rate limits and daily caps
-     ModelScope Z-Image-Turbo · Cloudflare FLUX · Zhipu CogView · SiliconFlow Kolors · Pollinations
-     (+ Muapi.ai paid, + your own GPU)
-                     │
-                     ▼
-     lib/image.js: crop the watermark strip → square → 1024px WebP, tagged "AI-generated" in EXIF
-                     │
-                     ▼
-     (optional) free vision model scores realism, rejects bad ones
-                     │
-                     ▼
-     data/db.json + data/images/*.webp ──► index.html (/api/face, /face.webp)
-```
+1. `public/phenotypes.json` defines weighted regions, age groups, anatomy,
+   skin tones, hairstyles, clothing, cities, expressions, and camera details.
+2. `public/promptEngine.js` samples a consistent profile and assembles its
+   prompt.
+3. Optional language models polish the prompt.
+4. An enabled image provider generates the portrait. Providers are rotated,
+   rate-limited, and backed off after failures.
+5. `lib/image.js` crops provider watermarks, makes a square 1024px WebP, and
+   adds an `AI-generated` EXIF description.
+6. Images and metadata are stored in a small file-backed pool under `data/`.
+7. The server exposes the page and JSON endpoints, or the same assets can be
+   published statically to GitHub Pages.
 
-### Prompt engine (`public/promptEngine.js`)
-It follows `step_by_step_assembly` in your JSON exactly: region by `region_weights` (the mixed-heritage pool is split
-evenly), age by `age_cohort_weights` (with an exact age in the range), 1–2 traits per anatomy category, one skin
-tone, pose, expression, grooming, accessory, 1–2 imperfections, lighting, and lens. It also adds consistency rules:
-- beards only on men and makeup only on women; no grey hair on people in their 20s
-- no flyaways or hairline details under a hijab or headwrap, or on a shaved head
-- the city always matches the background (a background "in Addis Ababa" means the city is Addis Ababa)
-- mixed-heritage profiles never output "mixed race" or "biracial", and sometimes add tailoring and heritage-jewelry accents
+See [DOCUMENTATION.md](./DOCUMENTATION.md) for architecture, configuration,
+deployment, and extension details.
 
-Every face has a seed, so any face can be regenerated exactly.
+## API
 
-### Endpoints
-| path | what |
-|---|---|
-| `/` | the page |
-| `/face.webp` | a random face as a plain image (embed it anywhere) |
-| `/api/face` | random face + metadata JSON |
-| `/api/face/:id` | a specific face (the page uses `#id` links) |
-| `/api/stats` | pool counts by region/age/gender/provider, and each provider's health |
-| `/api/sample?seed=123` | preview what the prompt engine produces |
+| Endpoint | Purpose |
+| --- | --- |
+| `/` | Web interface |
+| `/face.webp` | Random face as an image |
+| `/api/face` | Random face and metadata |
+| `/api/face/:id` | A specific face |
+| `/api/stats` | Pool and provider statistics |
+| `/api/sample?seed=123` | Preview a deterministic prompt |
 
-### Static mode
-If you upload only the `public/` folder to a static host (e.g. GitHub Pages), the page notices there is no
-server and generates faces live in the browser via Pollinations. A taller image is requested and the frame
-cuts off the bottom strip, so the watermark is hidden.
+## GitHub Pages mode
 
-## FairFace
+The included workflow can generate batches on Kaggle and publish a static site
+to GitHub Pages. Configure `KAGGLE_USERNAME` as an Actions variable and
+`KAGGLE_API_TOKEN` as an Actions secret, enable GitHub Pages with **GitHub
+Actions** as its source, then run the `faces` workflow manually once.
 
-`tools/fairface_calibrate.py` loads only FairFace's **labels** (age, gender, race) through `kagglehub`, using the
-`aibloy/fairface` dataset you found, or with `--hf` the Hugging Face copy. It calibrates the age and gender mix
-against real photos labelled "Black" and writes `data/fairface_calibration.json`. The server blends it with your
-JSON weights (`FAIRFACE_BLEND`).
+The workflow keeps the newest face pool on a separate `pool` branch so the
+main repository does not grow indefinitely. Read the deployment checklist in
+[DOCUMENTATION.md](./DOCUMENTATION.md) before enabling it.
 
-```bash
-pip install kagglehub pandas
-python tools/fairface_calibrate.py
-```
+## Contributing
 
-What FairFace can't do: it has no country or region labels, and it can't make a hosted model's pixels more
-realistic. That would take fine-tuning a LoRA on a GPU. The project also deliberately doesn't feed real
-FairFace faces into the models as references, because the output would resemble real, identifiable people.
+Fork the repository, make a focused change, run the relevant local checks, and
+open a pull request. Useful contributions include:
 
-## Provider notes
-- **ModelScope** (Alibaba): Z-Image-Turbo is the strongest free option for real-looking skin. The free API needs a ModelScope account linked to a verified Alibaba Cloud account, and quotas are daily.
-- **Cloudflare**: FLUX.1 schnell, very reliable. The 10k free neurons per day cover a few dozen images or more, depending on steps.
-- **Zhipu** (bigmodel.cn): CogView-3-Flash is free but weaker at photorealism. GLM-4.7-Flash (text) and GLM-4.6V-Flash (vision QA) are free too.
-- **Pollinations**: no key needed. The bottom strip is cropped to remove the watermark.
-- **Muapi.ai**: the backend of [Open-Generative-AI](https://github.com/Anil-matcha/open-generative-ai). That repo is a front end, so its cloud models go through Muapi and cost money per image. Add `MUAPI_KEY` if you want Z-Image Turbo, FLUX Krea or HunyuanImage 3 from there.
-- **Local GPU**: point `LOCAL_SD_URL` at AUTOMATIC1111, Forge or SD.Next (started with `--api`) and load any realistic SDXL or FLUX checkpoint.
+- improving phenotype data without stereotyping or flattening regional variety;
+- adding or maintaining image and language-model providers;
+- improving accessibility, performance, and static hosting;
+- adding tests for prompt consistency and image processing;
+- documenting provider quotas and deployment changes.
 
-Free tiers change often. Check `/api/stats`: a provider that keeps failing backs off automatically, and its last error is shown there.
+Please do not use generated faces as real identities, fake testimonials,
+profiles, IDs, or evidence. The site should always make clear that the people
+shown do not exist.
 
-## Ethics
-Every image carries an "AI-generated" EXIF tag, and the page says plainly that none of these people exist.
-Keep it that way if you deploy it. Don't present these faces as real people (fake profiles, testimonials, IDs).
+## License
+
+This project is available under the [Apache License 2.0](./LICENSE). You may
+use, modify, and redistribute it—including commercially—as long as you keep
+the copyright and license notices and mark modified files. This is the
+license's way of ensuring the original project receives credit.
+
+Provider APIs, models, and datasets may have separate terms and quotas; check
+those terms before deploying a fork.
