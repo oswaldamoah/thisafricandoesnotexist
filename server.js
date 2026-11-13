@@ -40,6 +40,15 @@ const QA_MAX_RETRIES = 0; // a rejected image just frees the slot; the loop make
 
 const config = JSON.parse(fs.readFileSync(path.join(ROOT, 'public/phenotypes.json'), 'utf8'));
 const store = new Store(path.join(ROOT, 'data'));
+
+// Faces you've kept from earlier runs (local-data/db.json + local-data/images). Shown while the
+// main pool has fewer than FALLBACK_UNTIL faces, e.g. right after a restart or while Kaggle is working.
+// Read-only: the server never changes this folder.
+const FALLBACK_DIR = path.resolve(ROOT, process.env.FALLBACK_DIR || 'local-data');
+const FALLBACK_UNTIL = Number(process.env.FALLBACK_UNTIL || 10);
+const fallback = fs.existsSync(path.join(FALLBACK_DIR, 'db.json')) ? new Store(FALLBACK_DIR, { readOnly: true }) : null;
+// Pick which pool answers this request.
+const activeStore = () => (fallback && fallback.count() && store.count() < FALLBACK_UNTIL ? fallback : store);
 const log = (...a) => console.log(new Date().toISOString().slice(11, 19), ...a);
 
 // ---- optional FairFace calibration (tools/fairface_calibrate.py writes this file) ----
@@ -187,9 +196,9 @@ function send(res, code, body, type = 'application/json', extra = {}) {
   res.end(type === 'application/json' && typeof body !== 'string' ? JSON.stringify(body) : body);
 }
 
-function publicRecord(r) {
+function publicRecord(r, from = store) {
   return {
-    id: r.id, image: `/images/${r.file}`, age: r.age, gender: r.gender, city: r.city,
+    id: r.id, image: `${from === fallback ? '/local-images' : '/images'}/${r.file}`, age: r.age, gender: r.gender, city: r.city,
     region_label: r.region_label, is_mixed_heritage: r.is_mixed_heritage,
     provider: r.provider, model: r.model, prompt: r.prompt, created_at: r.createdAt,
   };
@@ -209,22 +218,27 @@ const server = http.createServer((req, res) => {
 
   if (p === '/api/face') {
     const exclude = new Set((url.searchParams.get('exclude') || '').split(',').filter(Boolean));
-    const r = store.random(exclude);
-    if (!r) return send(res, 503, { error: 'warming up', pool: 0, providers: providers.map((x) => x.id) }, 'application/json', { 'Retry-After': '10' });
-    return send(res, 200, publicRecord(r), 'application/json', { 'Cache-Control': 'no-store' });
+    const from = activeStore();
+    const r = from.random(exclude);
+    if (!r) return send(res, 503, { error: 'warming up', pool: 0, providers: [...providers.map((x) => x.id), ...(kaggle.enabled() ? ['kaggle'] : [])] }, 'application/json', { 'Retry-After': '10' });
+    return send(res, 200, publicRecord(r, from), 'application/json', { 'Cache-Control': 'no-store' });
   }
   if (p === '/face.webp' || p === '/image') { // a random face, straight as an image (TPDNE-style)
-    const r = store.random();
+    const from = activeStore();
+    const r = from.random();
     if (!r) return send(res, 503, { error: 'warming up' });
-    return serveFile(res, path.join(store.imgDir, r.file), 'no-store');
+    return serveFile(res, path.join(from.imgDir, r.file), 'no-store');
   }
   if (p.startsWith('/api/face/')) {
-    const r = store.get(p.split('/').pop());
-    return r ? send(res, 200, publicRecord(r)) : send(res, 404, { error: 'not found' });
+    const id = p.split('/').pop();
+    const r = store.get(id);
+    const fr = !r && fallback ? fallback.get(id) : null;
+    return r ? send(res, 200, publicRecord(r)) : fr ? send(res, 200, publicRecord(fr, fallback)) : send(res, 404, { error: 'not found' });
   }
   if (p === '/api/stats') {
     return send(res, 200, {
       pool: store.stats(), target: TARGET_POOL, rotate: ROTATE, running,
+      fallback: fallback ? { dir: path.basename(FALLBACK_DIR), faces: fallback.count(), showing: activeStore() === fallback, until: FALLBACK_UNTIL } : null,
       providers: providers.map((x) => ({ id: x.id, label: x.label, dailyLimit: x.dailyLimit, ...state[x.id],
         cooldownSeconds: Math.max(0, Math.round((state[x.id].cooldownUntil - Date.now()) / 1000)) })),
       llm_polish: llmEnabled(), vision_qa: qaEnabled(), kaggle: kaggle.publicState(),
@@ -232,6 +246,11 @@ const server = http.createServer((req, res) => {
   }
   if (p === '/api/sample') { // preview what the prompt engine produces
     return send(res, 200, sampleProfile(config, { overrides, seed: Number(url.searchParams.get('seed')) || undefined }));
+  }
+  if (p.startsWith('/local-images/') && fallback) {
+    const name = path.basename(p);
+    if (!/^[a-f0-9]+\.webp$/.test(name)) return send(res, 400, { error: 'bad name' });
+    return serveFile(res, path.join(fallback.imgDir, name), 'public, max-age=86400');
   }
   if (p.startsWith('/images/')) {
     const name = path.basename(p);
@@ -247,6 +266,7 @@ const server = http.createServer((req, res) => {
 
 server.listen(PORT, () => {
   log(`This African Does Not Exist → http://localhost:${PORT}  (pool ${store.count()}/${TARGET_POOL})`);
+  if (fallback) log(`Fallback: ${fallback.count()} faces from ${path.basename(FALLBACK_DIR)}/ shown while the pool has < ${FALLBACK_UNTIL}`);
   workerLoop();
 });
 
