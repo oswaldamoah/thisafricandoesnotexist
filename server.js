@@ -30,6 +30,7 @@ const { enabledProviders } = await import('./lib/providers.js');
 const { finishImage } = await import('./lib/image.js');
 const { polishPrompt, qaCheck, llmEnabled, qaEnabled } = await import('./lib/llm.js');
 const { Store } = await import('./lib/store.js');
+const { KaggleBatcher } = await import('./lib/kaggle.js');
 
 const PORT = Number(process.env.PORT || 3000);
 const TARGET_POOL = Number(process.env.TARGET_POOL || 1000);   // stop generating once the pool is this big...
@@ -62,6 +63,20 @@ const state = Object.fromEntries(providers.map((p) => [p.id, {
 let running = 0;
 
 function today() { return new Date().toISOString().slice(0, 10); }
+function msUntilUtcMidnight() { const d = new Date(); return Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate() + 1) - d.getTime() + 60e3; }
+
+// Say (at most every 5 min) when every provider is paused, so a quiet log isn't a mystery.
+let lastIdleLog = 0;
+function logIdle() {
+  if (running > 0 || Date.now() - lastIdleLog < 5 * 60e3) return;
+  lastIdleLog = Date.now();
+  const next = providers.map((p) => {
+    const s = state[p.id];
+    const at = Math.max(s.nextAt, s.cooldownUntil);
+    return `${p.id} ${s.usedToday >= p.dailyLimit && at <= Date.now() ? 'daily limit reached' : `back ${new Date(at).toISOString().slice(11, 16)} UTC`}`;
+  });
+  log(`… all providers paused (${next.join(', ')})${kaggle.enabled() ? `; Kaggle batch: ${kaggle.state.status}` : '. Add another key in .env to keep generating meanwhile.'}`);
+}
 
 function readyProvider() {
   const now = Date.now();
@@ -110,18 +125,43 @@ async function makeOne(p) {
   } catch (e) {
     s.failed += 1; s.failStreak += 1; s.lastError = e.message.slice(0, 300);
     // back off: 429 -> respect Retry-After or 10 min; other errors -> 30s, 60s, 120s … max 30 min
-    const backoff = e.status === 429 ? (e.retryAfterMs || 10 * 60e3)
+    // A spent DAILY quota (Cloudflare neurons, Gemini free tier, ModelScope…) won't come back in
+    // 10 minutes: park that provider until the quota resets (00:00 UTC) and let the others carry on.
+    const dailyQuota = e.status === 429 && /daily|per day|allocation|quota|limit: 0|RESOURCE_EXHAUSTED/i.test(e.message);
+    const backoff = dailyQuota ? msUntilUtcMidnight()
+      : e.status === 429 ? (e.retryAfterMs || 10 * 60e3)
       : e.status === 401 || e.status === 403 ? 60 * 60e3
       : Math.min(30e3 * 2 ** (s.failStreak - 1), 30 * 60e3);
     s.cooldownUntil = Date.now() + backoff;
-    log(`! ${p.id} failed (${e.message.slice(0, 160)}) — pausing ${Math.round(backoff / 1000)}s`);
+    if (dailyQuota) {
+      s.usedToday = p.dailyLimit;
+      log(`⏸ ${p.id} used up its free daily quota — skipping it until 00:00 UTC (${Math.round(backoff / 3600e3 * 10) / 10}h)`);
+    } else {
+      log(`! ${p.id} failed (${e.message.slice(0, 160)}) — pausing ${Math.round(backoff / 1000)}s`);
+    }
   } finally {
     s.busy = false;
   }
 }
 
+// ---- Kaggle free-GPU batches (fully automatic) ----
+const kaggle = new KaggleBatcher({
+  root: ROOT, store, config, sampleProfile, finishImage, log,
+  getOverrides: () => overrides,
+  wantMore: () => ROTATE || store.count() < TARGET_POOL,
+  afterAdd: () => { if (ROTATE && store.count() > TARGET_POOL) store.removeOldest(); },
+});
+if (kaggle.enabled()) {
+  log(`Kaggle GPU batches: on (${kaggle.ref}, every ${process.env.KAGGLE_EVERY_HOURS || 24} h)`);
+  setTimeout(() => kaggle.tick(), 5000);
+  setInterval(() => kaggle.tick(), Number(process.env.KAGGLE_TICK_MS || 60e3));
+}
+
 async function workerLoop() {
-  if (!providers.length) { log('No image providers enabled. Check your .env'); return; }
+  if (!providers.length) {
+    log(kaggle.enabled() ? 'No API image providers — running on Kaggle batches only.' : 'No image providers enabled. Check your .env');
+    return;
+  }
   log('Providers:', providers.map((p) => p.id).join(', '),
     '| LLM polish:', llmEnabled() ? 'on' : 'off', '| vision QA:', qaEnabled() ? 'on' : 'off');
   for (;;) {
@@ -133,6 +173,7 @@ async function workerLoop() {
         makeOne(p).finally(() => { running -= 1; });
         continue;
       }
+      logIdle();
     }
     await new Promise((r) => setTimeout(r, 500));
   }
@@ -186,7 +227,7 @@ const server = http.createServer((req, res) => {
       pool: store.stats(), target: TARGET_POOL, rotate: ROTATE, running,
       providers: providers.map((x) => ({ id: x.id, label: x.label, dailyLimit: x.dailyLimit, ...state[x.id],
         cooldownSeconds: Math.max(0, Math.round((state[x.id].cooldownUntil - Date.now()) / 1000)) })),
-      llm_polish: llmEnabled(), vision_qa: qaEnabled(),
+      llm_polish: llmEnabled(), vision_qa: qaEnabled(), kaggle: kaggle.publicState(),
     });
   }
   if (p === '/api/sample') { // preview what the prompt engine produces
