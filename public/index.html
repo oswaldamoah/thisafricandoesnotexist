@@ -106,7 +106,9 @@ const imgs = [$('imgA'), $('imgB')];
 let front = 0;
 let current = null;
 let queued = null;          // preloaded next face
-let mode = 'server';        // 'server' (server.js API) → 'pool' (static site: faces/manifest.json) → 'static' (Pollinations)
+// Static hosts (GitHub Pages) have no /api: go straight to the published pool instead of 404ing.
+const STATIC_HOST = /\.github\.io$/.test(location.hostname);
+let mode = STATIC_HOST ? 'pool' : 'server'; // 'server' (server.js API) → 'pool' (static site: faces/manifest.json) → 'static' (Pollinations)
 let config = null;
 const seen = [];
 
@@ -265,7 +267,7 @@ async function next() {
 async function boot() {
   const id = location.hash.slice(1);
   if (id) {
-    try {
+    if (!STATIC_HOST) try {
       const r = await fetch(`/api/face/${id}`);
       if (r.ok && (r.headers.get('content-type') || '').includes('json')) {
         const f = await r.json(); show(await preload({ ...f, src: f.image })); queued = getReadyFace().catch(() => null); return;
