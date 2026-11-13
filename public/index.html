@@ -1,0 +1,237 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>This African Does Not Exist</title>
+<meta name="description" content="Realistic AI portraits of modern Africans. Refresh for another. None of these people are real.">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='42' fill='%23c8742f'/></svg>">
+<style>
+  :root {
+    --bg: #14100d;
+    --ink: #f3ebe2;
+    --muted: #a8998a;
+    --line: #2d2520;
+    --accent: #d98a3d;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; background: var(--bg); color: var(--ink);
+    font: 15px/1.5 ui-sans-serif, -apple-system, "Segoe UI", Inter, Roboto, sans-serif; }
+  body { display: grid; grid-template-rows: auto 1fr auto; min-height: 100dvh; }
+
+  header, footer { display: flex; justify-content: space-between; align-items: center; gap: 1rem; padding: 14px 20px; }
+  .brand { font-family: Georgia, "Iowan Old Style", serif; font-size: 18px; letter-spacing: .01em; }
+  .brand b { color: var(--accent); font-weight: normal; font-style: italic; }
+  .hint { color: var(--muted); font-size: 13px; }
+  kbd { border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 4px; padding: 0 5px; font: 12px ui-monospace, monospace; color: var(--ink); }
+
+  main { display: grid; place-items: center; padding: 0 16px; }
+  .stage { width: min(calc(100dvh - 170px), 92vw, 1024px); max-width: 100%; }
+  .frame { position: relative; aspect-ratio: 1 / 1; overflow: hidden; border-radius: 6px; background: #0c0907; cursor: pointer;
+    box-shadow: 0 30px 80px -30px rgba(0,0,0,.8); }
+  /* object-position:top + taller source image = the bottom watermark strip is cut off (static mode) */
+  .frame img { position: absolute; inset: 0 0 auto 0; width: 100%; height: auto; min-height: 100%; object-fit: cover; object-position: top;
+    opacity: 0; transition: opacity .45s ease; display: block; }
+  .frame img.on { opacity: 1; }
+  .loading { position: absolute; inset: 0; display: grid; place-items: center; color: var(--muted); font-size: 14px; text-align: center; padding: 2rem; }
+  .loading::before { content: ""; width: 36px; height: 36px; border-radius: 50%; border: 2px solid var(--line); border-top-color: var(--accent);
+    animation: spin 1s linear infinite; display: block; margin: 0 auto 12px; }
+  .loading.hidden { display: none; }
+  @keyframes spin { to { transform: rotate(1turn); } }
+
+  .caption { display: flex; justify-content: space-between; align-items: baseline; gap: 1rem; padding: 12px 2px 0; }
+  .who { font-family: Georgia, serif; font-size: 17px; }
+  .who small { color: var(--muted); font-family: ui-sans-serif, sans-serif; font-size: 13px; margin-left: .5rem; }
+  .actions { display: flex; gap: 6px; }
+  button, .btn { background: none; color: var(--ink); border: 1px solid var(--line); border-radius: 999px; padding: 6px 14px;
+    font: inherit; font-size: 13px; cursor: pointer; text-decoration: none; }
+  button:hover, .btn:hover { border-color: var(--accent); color: var(--accent); }
+  button.primary { background: var(--accent); border-color: var(--accent); color: #1a120b; }
+  button.primary:hover { filter: brightness(1.08); color: #1a120b; }
+
+  details { margin-top: 10px; border-top: 1px solid var(--line); padding-top: 10px; }
+  summary { cursor: pointer; color: var(--muted); font-size: 13px; }
+  .meta { display: grid; grid-template-columns: max-content 1fr; gap: 4px 14px; font-size: 13px; margin: 10px 0; }
+  .meta dt { color: var(--muted); }
+  .meta dd { margin: 0; }
+  .prompt { font: 12.5px/1.55 ui-monospace, "SF Mono", Menlo, monospace; color: #d6c9bb; background: #1b1511; border: 1px solid var(--line);
+    border-radius: 6px; padding: 10px 12px; white-space: pre-wrap; max-height: 220px; overflow: auto; }
+
+  footer { color: var(--muted); font-size: 12px; }
+  footer a { color: var(--muted); }
+  .mode { white-space: nowrap; font: 11px ui-monospace, monospace; border: 1px solid var(--line); border-radius: 999px; padding: 2px 8px; }
+
+  @media (max-width: 640px) { .hint { display: none; } .caption { flex-direction: column; } }
+</style>
+</head>
+<body>
+<header>
+  <div class="brand">this <b>african</b> does not exist</div>
+  <div class="hint"><kbd>space</kbd> or tap for another · <kbd>i</kbd> details</div>
+</header>
+
+<main>
+  <div class="stage">
+    <div class="frame" id="frame" title="Tap for another face">
+      <img id="imgA" alt="AI-generated portrait of a person who does not exist">
+      <img id="imgB" alt="AI-generated portrait of a person who does not exist">
+      <div class="loading" id="loading">Generating a face…</div>
+    </div>
+    <div class="caption">
+      <div class="who" id="who">&nbsp;</div>
+      <div class="actions">
+        <button id="copy" title="Copy the prompt">Copy prompt</button>
+        <a class="btn" id="download" download>Save</a>
+        <button class="primary" id="next">Another</button>
+      </div>
+    </div>
+    <details id="info">
+      <summary>How this face was made</summary>
+      <dl class="meta" id="meta"></dl>
+      <div class="prompt" id="prompt"></div>
+    </details>
+  </div>
+</main>
+
+<footer>
+  <span>Every face here is AI-generated. None of these people exist. Made with free open models.</span>
+  <span class="mode" id="mode">…</span>
+</footer>
+
+<script type="module">
+import { sampleProfile } from './promptEngine.js';
+
+const $ = (id) => document.getElementById(id);
+const imgs = [$('imgA'), $('imgB')];
+let front = 0;
+let current = null;
+let queued = null;          // preloaded next face
+let mode = 'server';        // 'server' (pool from server.js) or 'static' (browser → Pollinations directly)
+let config = null;
+const seen = [];
+
+// ---------- server mode ----------
+async function fromServer() {
+  const r = await fetch(`/api/face?exclude=${seen.slice(-30).join(',')}`, { cache: 'no-store' });
+  if (r.status === 503) { const j = await r.json(); throw Object.assign(new Error('warming'), { warming: true, info: j }); }
+  if (!r.ok) throw new Error(`HTTP ${r.status}`);
+  const face = await r.json();
+  return { ...face, src: face.image };
+}
+
+// ---------- static mode (no server: e.g. GitHub Pages) ----------
+async function fromStatic() {
+  config ||= await (await fetch('./phenotypes.json')).json();
+  const p = sampleProfile(config);
+  const guards = 'Single real adult person, photographed on a modern city street, contemporary everyday clothing, unretouched natural skin, no text, no watermark';
+  const q = new URLSearchParams({ model: 'flux', width: 1024, height: 1120, seed: p.seed, nologo: 'true', private: 'true', negative_prompt: p.negativePrompt });
+  const src = `https://image.pollinations.ai/prompt/${encodeURIComponent(`${p.prompt} ${guards}.`.slice(0, 1500))}?${q}`;
+  return { id: String(p.seed), src, age: p.age, gender: p.gender, city: p.city, region_label: p.region_label,
+    provider: 'pollinations', model: 'flux', prompt: p.prompt };
+}
+
+async function fetchFace() {
+  if (mode === 'server') {
+    try { return await fromServer(); }
+    catch (e) {
+      if (e.warming) throw e;
+      mode = 'static';
+    }
+  }
+  return fromStatic();
+}
+
+function preload(face) {
+  return new Promise((resolve, reject) => {
+    const im = new Image();
+    im.onload = () => resolve(face);
+    im.onerror = () => reject(new Error('image failed'));
+    im.src = face.src;
+  });
+}
+
+async function getReadyFace() {
+  for (let tries = 0; tries < 6; tries++) {
+    try { return await preload(await fetchFace()); }
+    catch (e) {
+      if (e.warming) {
+        $('loading').textContent = `Warming up — the first faces are being generated (${e.info.providers.join(', ')}). This page will update by itself.`;
+      }
+      await new Promise((r) => setTimeout(r, e.warming ? 8000 : 2500));
+    }
+  }
+  throw new Error('Could not load a face. Try again in a minute.');
+}
+
+function show(face) {
+  current = face;
+  seen.push(face.id);
+  const back = imgs[1 - front];
+  back.src = face.src;
+  back.classList.add('on');
+  imgs[front].classList.remove('on');
+  front = 1 - front;
+  $('loading').classList.add('hidden');
+
+  $('who').innerHTML = `${face.age}, ${face.gender} <small>${face.city}</small>`;
+  $('mode').textContent = mode === 'server' ? 'pre-generated pool' : 'live · pollinations';
+  $('download').href = face.src;
+  $('download').setAttribute('download', `thisafricandoesnotexist-${face.id}.${mode === 'server' ? 'webp' : 'jpg'}`);
+  const rows = [
+    ['Region profile', face.region_label],
+    ['Model', `${face.model} via ${face.provider}`],
+    ['Created', face.created_at ? new Date(face.created_at).toLocaleString() : 'just now'],
+  ];
+  $('meta').innerHTML = rows.map(([k, v]) => `<dt>${k}</dt><dd>${String(v ?? '').replace(/</g, '&lt;')}</dd>`).join('');
+  $('prompt').textContent = face.prompt;
+  history.replaceState(null, '', mode === 'server' ? `#${face.id}` : location.pathname);
+}
+
+let busy = false;
+async function next() {
+  if (busy) return;
+  busy = true;
+  try {
+    if (!current) $('loading').classList.remove('hidden');
+    let face = queued ? await queued : null;
+    if (!face) face = await getReadyFace();
+    queued = null;
+    show(face);
+    queued = getReadyFace().catch(() => null); // preload the following one
+  } catch (e) {
+    $('loading').textContent = e.message;
+    $('loading').classList.remove('hidden');
+  } finally {
+    busy = false;
+  }
+}
+
+// open a specific face from the URL hash (server mode)
+async function boot() {
+  const id = location.hash.slice(1);
+  if (id) {
+    try {
+      const r = await fetch(`/api/face/${id}`);
+      if (r.ok) { const f = await r.json(); show(await preload({ ...f, src: f.image })); queued = getReadyFace().catch(() => null); return; }
+    } catch {}
+  }
+  next();
+}
+
+$('frame').addEventListener('click', next);
+$('next').addEventListener('click', next);
+$('copy').addEventListener('click', async () => {
+  if (!current) return;
+  await navigator.clipboard.writeText(current.prompt);
+  $('copy').textContent = 'Copied';
+  setTimeout(() => ($('copy').textContent = 'Copy prompt'), 1200);
+});
+addEventListener('keydown', (e) => {
+  if (e.target.closest('input, textarea')) return;
+  if (e.code === 'Space' || e.key === 'ArrowRight') { e.preventDefault(); next(); }
+  if (e.key === 'i') $('info').open = !$('info').open;
+});
+boot();
+</script>
+</body>
+</html>

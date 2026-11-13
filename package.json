@@ -1,0 +1,17 @@
+{
+  "name": "thisafricandoesnotexist",
+  "version": "1.0.0",
+  "description": "This African Does Not Exist — realistic AI portraits of modern Africans from free models",
+  "type": "module",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "test-prompt": "node tools/samplePrompts.js 5",
+    "mock": "MOCK=1 node server.js"
+  },
+  "engines": { "node": ">=20" },
+  "dependencies": {
+    "sharp": "^0.34.0"
+  },
+  "license": "MIT"
+}

@@ -1,0 +1,474 @@
+{
+  "global_prompt_modifiers": {
+    "style": "Candid street-style portrait photography, raw unretouched skin texture, visible pores, natural skin sheen, authentic expression",
+    "negative_prompts": [
+      "tribal paint",
+      "villager",
+      "mud huts",
+      "savannah",
+      "safari",
+      "traditional ceremonial wear",
+      "airbrushed skin",
+      "plastic skin",
+      "studio lighting",
+      "3d render",
+      "generic mixed race trope",
+      "stock photo pose"
+    ]
+  },
+  "generation_pipeline_rules": {
+    "weighted_sampling_strategy": {
+      "region_weights": {
+        "west_africa_coastal": 0.25,
+        "horn_of_africa": 0.12,
+        "nilotic_east_central": 0.13,
+        "southern_africa": 0.20,
+        "north_africa": 0.15,
+        "mixed_heritage_pool": 0.15
+      },
+      "age_cohort_weights": {
+        "young_adult_18_29": 0.45,
+        "adult_30_49": 0.35,
+        "mature_50_75": 0.20
+      }
+    },
+    "step_by_step_assembly": [
+      "1. Select a region using region_weights (if mixed_heritage_pool is chosen, pick evenly from mixed_heritage_phenotypes).",
+      "2. Select an age bracket using age_cohort_weights, generate a specific integer age within that range, and pull 1 modifier from age_cohort_modifiers.",
+      "3. Sample 1 to 2 distinct traits from each anatomical category (face_shape, forehead, eyes, nose, lips, cheekbones, jawline) and 1 skin_tones object.",
+      "4. Sample 1 gaze_and_pose and 1 expression from candid_micro_expressions.",
+      "5. Sample 1 grooming_realism and 1 accessory from everyday_accessories_and_grooming, plus 1 to 2 items from realism_imperfections_pool.",
+      "6. Sample 1 lighting and 1 camera_artifacts from photographic_physics.",
+      "7. Combine with modern hair, wardrobe, and urban background from the selected profile."
+    ],
+    "mixed_heritage_guidelines": [
+      "Avoid monolithic keywords like 'mixed race' or 'biracial' in the final prompt string; instead, describe the specific intersection of facial anatomy, skin undertone, and hair curl pattern (e.g., 'high cheekbones, medium nasal bridge, warm honey-caramel skin tone, loose 3C curls').",
+      "Blend global and local sartorial cues in styling, such as pairing European tailoring (trench coats, slim-cut blazers) with contemporary African streetwear or subtle heritage jewelry."
+    ],
+    "prompt_assembly_template": "Candid street-style portrait photography of a {age}-year-old {gender} in {city}, {gaze_and_pose}, {expression}. {face_shape}, {forehead}, {eyes}, {nose}, {lips}, {cheekbones}, {jawline}, {skin_shade} skin with {skin_undertone} undertones. {hairstyle}, {grooming_realism}, wearing {wardrobe} and {accessory}. {age_cohort_modifier}, {realism_imperfections}. {urban_background}, {lighting}, {camera_artifacts}, {global_style}."
+  },
+  "candid_micro_expressions": {
+    "gaze_and_pose": [
+      "looking slightly off-camera toward the left as if listening to someone",
+      "head tilted slightly back with a relaxed, unposed posture",
+      "caught mid-stride turning slightly toward the lens",
+      "squinting subtly against bright natural sunlight",
+      "chin resting lightly on one hand at an outdoor table"
+    ],
+    "expression": [
+      "unposed neutral resting face with relaxed jaw",
+      "mid-laugh with genuine eye crinkles and natural teeth",
+      "subtle, asymmetric closed-mouth smirk",
+      "pensive, slightly tired end-of-day expression",
+      "warm, understated smile with soft eyes"
+    ]
+  },
+  "everyday_accessories_and_grooming": {
+    "grooming_realism": [
+      "two-week-old haircut with natural hairline regrowth",
+      "flecks of silver and gray hair in beard and temples",
+      "natural frizz and flyaways haloing curly hair in humidity",
+      "minimal no-makeup skin with natural lip texture",
+      "subtle everyday makeup with warm terracotta lip gloss"
+    ],
+    "accessories": [
+      "thin gold hoop earrings",
+      "wired white earphones with one earbud in",
+      "thin-rimmed prescription glasses with slight lens reflection",
+      "canvas tote bag strap over shoulder",
+      "delicate gold chain necklace",
+      "worn leather crossbody bag strap"
+    ]
+  },
+  "age_cohort_modifiers": {
+    "young_adult_18_29": [
+      "smooth skin elasticity with occasional minor blemishes",
+      "fresh razor lineup or styled edges"
+    ],
+    "adult_30_49": [
+      "subtle smile lines around the mouth and eyes",
+      "mature facial bone structure with light under-eye creases"
+    ],
+    "mature_50_75": [
+      "deeply etched expression lines and crow's feet",
+      "salt-and-pepper hair or graying hairline",
+      "natural skin texture variations, age spots, and softened jawline"
+    ]
+  },
+  "photographic_physics": {
+    "lighting": [
+      "harsh afternoon sun casting realistic shadows under the nose and chin",
+      "soft overcast daylight with even, natural skin highlights",
+      "warm late-afternoon side light grazing skin texture",
+      "shaded sidewalk ambient light with bright sunlit street behind"
+    ],
+    "camera_artifacts": [
+      "35mm documentary street lens, natural perspective distortion",
+      "85mm portrait lens, f/2.8, creamy background bokeh",
+      "50mm lens, candid photojournalism aesthetic, subtle film grain",
+      "natural dynamic range with deep rich shadows and preserved highlights on dark skin"
+    ]
+  },
+  "realism_imperfections_pool": [
+    "subtle acne scars on cheeks",
+    "natural under-eye creases and faint dark circles",
+    "asymmetric smile",
+    "flyaway baby hairs catching the sunlight",
+    "slight forehead expression lines",
+    "uneven skin pigmentation around the mouth and forehead",
+    "tiny moles or beauty marks",
+    "natural facial oil sheen on the nose bridge and forehead",
+    "chapped lips"
+  ],
+  "regional_phenotypes": [
+    {
+      "id": "horn_of_africa",
+      "region_label": "Horn of Africa (Somali, Ethiopian, Eritrean)",
+      "demographics_sample": ["Addis Ababa", "Mogadishu", "Nairobi (Eastleigh)", "Asmara"],
+      "anatomy": {
+        "face_shape": ["Narrow elongated oval", "Heart-shaped with tapered chin", "Slender rectangular"],
+        "forehead": ["High, prominent forehead", "Smooth, broad upper brow"],
+        "eyes": ["Large almond-shaped eyes", "Deep-set with prominent upper eyelid crease", "Dark espresso irises"],
+        "nose": ["High, narrow nasal bridge", "Straight or subtly aquiline profile", "Narrow nostrils"],
+        "lips": ["Medium-full with a sharply defined cupid's bow", "Balanced upper and lower lip ratio"],
+        "cheekbones": ["High, sculpted zygomatic arch", "Lean facial fat distribution"],
+        "jawline": ["Slender, tapered jawline", "Defined chin"]
+      },
+      "skin_tones": [
+        { "shade": "Warm golden caramel", "undertone": "Olive-yellow" },
+        { "shade": "Rich toasted almond", "undertone": "Warm golden" },
+        { "shade": "Deep reddish-mahogany", "undertone": "Warm bronze" },
+        { "shade": "Medium olive-brown", "undertone": "Neutral" }
+      ],
+      "modern_styling": {
+        "male_hair": [
+          "Tapered fade with loose 3C/4A curls on top",
+          "Neat low-cut buzz with sharp razor hairline",
+          "Short curly afro with trimmed mustache and goatee",
+          "Medium-length tousled curls"
+        ],
+        "female_hair": [
+          "Loose 3B/3C curls pulled into a messy high bun with baby hairs",
+          "Chiffon hijab draped loosely over the shoulders",
+          "Sleek middle-part silk press",
+          "Shoulder-length passion twists"
+        ],
+        "wardrobe": [
+          "Oversized vintage denim jacket over a plain white crewneck tee",
+          "Tailored linen button-down shirt",
+          "Modern athletic tracksuit jacket",
+          "Minimalist knit sweater"
+        ],
+        "urban_backgrounds": [
+          "Busy sunlit street in Addis Ababa with blurred yellow-and-blue taxis",
+          "Modern outdoor coffee shop patio",
+          "Concrete apartment balcony with potted plants"
+        ]
+      }
+    },
+    {
+      "id": "west_africa_coastal",
+      "region_label": "Coastal West Africa (Nigerian, Ghanaian, Ivorian, Senegalese)",
+      "demographics_sample": ["Lagos", "Accra", "Abidjan", "Dakar"],
+      "anatomy": {
+        "face_shape": ["Rounded oval", "Soft square", "Broad heart-shaped"],
+        "forehead": ["Rounded, medium-high forehead", "Smooth brow bone"],
+        "eyes": ["Large, expressive round-almond eyes", "Warm dark brown irises", "Full eyebrows"],
+        "nose": ["Low-to-medium nasal bridge", "Soft, rounded nasal tip", "Broad, flared nostrils"],
+        "lips": ["Full, plush upper and lower lips", "Softly rounded vermilion border"],
+        "cheekbones": ["Full, rounded cheeks", "Soft malar prominence"],
+        "jawline": ["Softly rounded jawline", "Strong, full chin"]
+      },
+      "skin_tones": [
+        { "shade": "Deep rich espresso", "undertone": "Cool blue-black" },
+        { "shade": "Dark chocolate brown", "undertone": "Neutral-warm" },
+        { "shade": "Warm chestnut brown", "undertone": "Reddish-copper" },
+        { "shade": "Deep ebony with natural specular highlights", "undertone": "Cool" }
+      ],
+      "modern_styling": {
+        "male_hair": [
+          "Crisp skin fade with sponge-twisted 4C coils",
+          "Clean-shaven bald head with a well-groomed full beard",
+          "Low-cut waves with a sharp temple lineup",
+          "Short neat starter locs"
+        ],
+        "female_hair": [
+          "Waist-length knotless box braids",
+          "Short bleached-blonde tapered 4C pixie cut",
+          "Neat stitch cornrows swept back into a bun",
+          "Glueless lace-front bob wig with natural density"
+        ],
+        "wardrobe": [
+          "Contemporary Afro-urban streetwear graphic t-shirt",
+          "Crisp tailored short-sleeve camp collar shirt",
+          "Smart-casual blazer over a turtleneck",
+          "Subtle contemporary Ankara-print bomber jacket"
+        ],
+        "urban_backgrounds": [
+          "Vibrant Lagos street corner with warm afternoon sun and blurred concrete architecture",
+          "Modern Accra cafe interior with warm ambient lighting",
+          "Outside a contemporary glass office building"
+        ]
+      }
+    },
+    {
+      "id": "nilotic_east_central",
+      "region_label": "Nilotic (South Sudanese, Kenyan Luo, Ugandan Acholi)",
+      "demographics_sample": ["Juba", "Nairobi", "Kampala"],
+      "anatomy": {
+        "face_shape": ["Long, slender oval", "Angular diamond", "Elongated rectangular"],
+        "forehead": ["Very high, vertical forehead", "Flat, smooth brow"],
+        "eyes": ["Strikingly bright white sclera contrasting with dark irises", "Narrow almond-shaped eyes", "High-arched eyebrows"],
+        "nose": ["Medium-high straight bridge", "Defined, slightly broad tip"],
+        "lips": ["Full, well-defined lips", "Natural dark two-tone lip pigmentation"],
+        "cheekbones": ["Very high, prominent, sharp cheekbones", "Hollowed sub-malar cheek contour"],
+        "jawline": ["Sharp, angular jawline", "Long chin"]
+      },
+      "skin_tones": [
+        { "shade": "Ultra-deep obsidian black", "undertone": "Cool blue-violet" },
+        { "shade": "Deep charcoal-ebony", "undertone": "Cool neutral" },
+        { "shade": "Rich dark cocoa", "undertone": "Neutral" }
+      ],
+      "modern_styling": {
+        "male_hair": [
+          "Natural low-cut 4C afro",
+          "Clean-shaven head",
+          "Mid-length freeform locs",
+          "High-top fade with sponge curls"
+        ],
+        "female_hair": [
+          "Close-cropped natural 4C buzz cut (TWA - Teeny Weeny Afro)",
+          "Long faux locs with subtle burgundy highlights",
+          "Sleek low ponytail with center part",
+          "Bantu knots"
+        ],
+        "wardrobe": [
+          "Minimalist black cotton hoodie",
+          "Crisp white button-down shirt with top button undone",
+          "Oversized denim overshirt",
+          "Ribbed sleeveless tank top"
+        ],
+        "urban_backgrounds": [
+          "Nairobi CBD sidewalk with modern high-rises blurred in background",
+          "Sunlit university campus courtyard",
+          "Urban rooftop terrace at golden hour"
+        ]
+      }
+    },
+    {
+      "id": "southern_africa",
+      "region_label": "Southern Africa (Zulu, Xhosa, Sotho, Khoisan heritage)",
+      "demographics_sample": ["Johannesburg", "Cape Town", "Gaborone", "Windhoek"],
+      "anatomy": {
+        "face_shape": ["Heart-shaped", "Diamond", "Soft round-oval"],
+        "forehead": ["Medium-height, slightly rounded forehead"],
+        "eyes": ["Almond-shaped eyes", "Occasional subtle epicanthic fold (common in Khoisan/Xhosa heritage)", "Warm dark brown irises"],
+        "nose": ["Low nasal bridge", "Short nose length", "Soft, wide nasal base"],
+        "lips": ["Full, rounded lips", "Soft cupid's bow"],
+        "cheekbones": ["Very high, wide, prominent cheekbones", "Tapered lower face"],
+        "jawline": ["Delicate, narrow chin", "Soft jawline"]
+      },
+      "skin_tones": [
+        { "shade": "Warm honey-ochre", "undertone": "Golden-yellow" },
+        { "shade": "Medium caramel-tan", "undertone": "Warm golden" },
+        { "shade": "Rich milk-chocolate brown", "undertone": "Warm neutral" },
+        { "shade": "Deep warm umber", "undertone": "Reddish-brown" }
+      ],
+      "modern_styling": {
+        "male_hair": [
+          "Low-cut fade with dyed blonde or copper top (Amapiano street style)",
+          "Neat short afro with trimmed mustache",
+          "Short braided cornrows",
+          "Clean buzzcut with bucket hat"
+        ],
+        "female_hair": [
+          "Short natural 4C afro",
+          "Micro-braids styled in a half-up bun",
+          "Long wavy weave with side part",
+          "Headwrap (doek) tied in a modern turban style"
+        ],
+        "wardrobe": [
+          "Trendy Johannesburg streetwear: oversized graphic tee and bucket hat",
+          "Casual denim jacket",
+          "Smart-casual knit polo shirt",
+          "Modern puffer vest over a sweatshirt"
+        ],
+        "urban_backgrounds": [
+          "Maboneng Precinct street in Johannesburg with brick buildings and murals",
+          "Cape Town city street with Table Mountain faintly blurred in the distance",
+          "Outdoor trendy coffee bar"
+        ]
+      }
+    },
+    {
+      "id": "north_africa",
+      "region_label": "North Africa (Amazigh/Berber, Egyptian, Moroccan, Tunisian)",
+      "demographics_sample": ["Cairo", "Casablanca", "Tunis", "Algiers"],
+      "anatomy": {
+        "face_shape": ["Oval", "Angular square-oval", "Diamond"],
+        "forehead": ["Medium-high, straight forehead", "Prominent brow ridge"],
+        "eyes": ["Almond-shaped eyes with thick dark eyelashes", "Dark brown, hazel, or occasional olive-green irises", "Thick, straight eyebrows"],
+        "nose": ["Straight or slightly convex (Roman) nasal bridge", "Defined, narrow tip"],
+        "lips": ["Medium fullness", "Well-defined border"],
+        "cheekbones": ["Defined, medium-high cheekbones"],
+        "jawline": ["Strong, angular jawline", "Square or rounded chin"]
+      },
+      "skin_tones": [
+        { "shade": "Warm olive-tan", "undertone": "Golden-olive" },
+        { "shade": "Sun-kissed bronze", "undertone": "Warm golden" },
+        { "shade": "Light wheat-beige", "undertone": "Neutral-olive" },
+        { "shade": "Rich medium brown (Upper Egypt / Nubian)", "undertone": "Warm bronze" }
+      ],
+      "modern_styling": {
+        "male_hair": [
+          "Thick, wavy dark hair with a modern taper fade and full beard",
+          "Messy textured fringe with stubble",
+          "Slicked-back dark wavy hair"
+        ],
+        "female_hair": [
+          "Voluminous dark wavy/curly hair (2C/3A) worn down",
+          "Modern patterned or neutral-toned hijab",
+          "Shoulder-length layered brunette blowout"
+        ],
+        "wardrobe": [
+          "Casual leather or denim jacket over a t-shirt",
+          "Linen casual shirt",
+          "Modern trench coat or light blazer"
+        ],
+        "urban_backgrounds": [
+          "Bustling Casablanca or Cairo street with warm limestone buildings and blurred traffic",
+          "Modern outdoor cafe table",
+          "Mediterranean coastal promenade"
+        ]
+      }
+    }
+  ],
+  "mixed_heritage_phenotypes": [
+    {
+      "id": "afro_european_mediterranean_atlantic",
+      "region_label": "Afro-European / Creole / Mixed African-European",
+      "demographics_sample": ["Cape Town (Coloured community)", "London", "Paris", "Lisbon", "Durban"],
+      "anatomy": {
+        "face_shape": ["Soft oval", "Diamond", "Balanced heart-shaped"],
+        "forehead": ["Medium-high, smooth forehead"],
+        "eyes": ["Almond or large expressive eyes", "Hazel, amber, or deep brown irises", "Variable eyelid creases"],
+        "nose": ["Medium bridge height", "Straight to slightly upturned or softly rounded tip", "Moderate width"],
+        "lips": ["Medium-full lips with a soft, natural curve"],
+        "cheekbones": ["Defined cheekbones", "Moderate facial fat distribution"],
+        "jawline": ["Cleanly defined jawline", "Softly tapered chin"]
+      },
+      "skin_tones": [
+        { "shade": "Golden honey-beige", "undertone": "Warm golden" },
+        { "shade": "Light amber-tan", "undertone": "Neutral peach" },
+        { "shade": "Warm bronze-caramel", "undertone": "Golden-olive" },
+        { "shade": "Rich copper-brown", "undertone": "Warm red-gold" }
+      ],
+      "modern_styling": {
+        "male_hair": [
+          "Soft, loose 3A/3B curls with a medium fade",
+          "Wavy textured fringe with a groomed beard",
+          "Short, defined natural coils"
+        ],
+        "female_hair": [
+          "Coiled 3C/4A voluminous wash-and-go curls",
+          "Soft honey-brown balayage highlights on long loose waves",
+          "Sleek middle-part silk press",
+          "Textured high pineapple updo"
+        ],
+        "wardrobe": [
+          "Smart-casual tailored blazer over a minimalist t-shirt",
+          "Contemporary knitwear with clean minimalist lines",
+          "Vintage leather jacket"
+        ],
+        "urban_backgrounds": [
+          "Trendy Cape Town inner-city street with brick architecture",
+          "Bustling London or Paris café terrace",
+          "Sunlit art gallery interior"
+        ]
+      }
+    },
+    {
+      "id": "afro_asian_indian_ocean",
+      "region_label": "Afro-Asian / Indo-African / Afro-South Asian",
+      "demographics_sample": ["Durban", "Nairobi (Parklands/Westlands)", "Dar es Salaam", "Mauritius", "London"],
+      "anatomy": {
+        "face_shape": ["Slender oval", "Angular diamond", "Balanced rectangle"],
+        "forehead": ["Smooth, medium-high forehead"],
+        "eyes": ["Deep-set almond eyes", "Long, dark eyelashes", "Dark espresso or rich amber irises"],
+        "nose": ["High-to-medium nasal bridge", "Straight or subtly aquiline profile", "Refined, balanced tip"],
+        "lips": ["Medium-full, balanced upper and lower lips"],
+        "cheekbones": ["High, prominent cheekbones"],
+        "jawline": ["Defined, elegant jawline and chin"]
+      },
+      "skin_tones": [
+        { "shade": "Warm teak-brown", "undertone": "Golden-warm" },
+        { "shade": "Rich terracotta", "undertone": "Warm bronze" },
+        { "shade": "Deep mocha", "undertone": "Neutral" },
+        { "shade": "Olive-bronze", "undertone": "Golden-olive" }
+      ],
+      "modern_styling": {
+        "male_hair": [
+          "Clean medium taper fade with textured dark waves on top",
+          "Neatly combed medium-length dark hair with light stubble",
+          "Short-cropped curls"
+        ],
+        "female_hair": [
+          "Glossy, thick dark waves flowing past the shoulders",
+          "Low chic bun with loose framing pieces around the face",
+          "Long, neat box braids with golden thread accents"
+        ],
+        "wardrobe": [
+          "Contemporary fusion wear: structured linen overshirt with modern trousers",
+          "Casual denim button-down",
+          "Minimalist tailored coat"
+        ],
+        "urban_backgrounds": [
+          "Durban beachfront promenade at sunset",
+          "Nairobi modern commercial district with glass facades",
+          "Vibrant city rooftop lounge"
+        ]
+      }
+    },
+    {
+      "id": "afro_middle_eastern_levantine",
+      "region_label": "Afro-Arab / Afro-Levantine / Afro-Middle Eastern",
+      "demographics_sample": ["Khartoum", "Cairo", "Dubai", "Beirut", "London"],
+      "anatomy": {
+        "face_shape": ["Oval", "Heart-shaped", "Slender rectangular"],
+        "forehead": ["High, broad forehead"],
+        "eyes": ["Large, expressive eyes with prominent almond shape", "Deep brown irises", "Thick, naturally arched eyebrows"],
+        "nose": ["Straight or subtly prominent nasal bridge", "Defined nasal tip"],
+        "lips": ["Full, expressive lips with a clear cupid's bow"],
+        "cheekbones": ["Sculpted zygomatic arches"],
+        "jawline": ["Defined, strong jawline with a soft chin contour"]
+      },
+      "skin_tones": [
+        { "shade": "Warm walnut brown", "undertone": "Golden-warm" },
+        { "shade": "Deep bronze", "undertone": "Reddish-brown" },
+        { "shade": "Rich caramel", "undertone": "Neutral-warm" }
+      ],
+      "modern_styling": {
+        "male_hair": [
+          "Full, well-groomed dark beard paired with a short fade",
+          "Textured medium-length curls brushed back",
+          "Clean short buzz cut"
+        ],
+        "female_hair": [
+          "Voluminous long dark curls with natural bounce",
+          "Sleek high ponytail with laid edges",
+          "Modern minimalist satin hijab style"
+        ],
+        "wardrobe": [
+          "Modern streetwear jacket over a hoodie",
+          "Lightweight cotton button-down shirt",
+          "Smart casual blazer"
+        ],
+        "urban_backgrounds": [
+          "Khartoum urban street scene with warm evening light",
+          "Dubai modern downtown promenade",
+          "Cairo contemporary cafe terrace"
+        ]
+      }
+    }
+  ]
+}
