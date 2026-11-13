@@ -33,19 +33,20 @@ const { Store } = await import('./lib/store.js');
 const { KaggleBatcher } = await import('./lib/kaggle.js');
 
 const PORT = Number(process.env.PORT || 3000);
-const TARGET_POOL = Number(process.env.TARGET_POOL || 1000);   // stop generating once the pool is this big...
-const ROTATE = process.env.ROTATE !== '0';                     // ...unless ROTATE=1: then keep replacing old faces
+const TARGET_POOL = Number(process.env.TARGET_POOL || 500);    // keep the newest N faces on disk...
+const ROTATE = process.env.ROTATE !== '0';                     // ...and keep replacing the oldest (ROTATE=0: stop at N)
+const FRESH_MIN = Number(process.env.FRESH_MIN || 20);         // newest batch smaller than this? top up with newest faces
 const CONCURRENCY = Number(process.env.CONCURRENCY || 3);
 const QA_MAX_RETRIES = 0; // a rejected image just frees the slot; the loop makes another (respects rate limits)
 
 const config = JSON.parse(fs.readFileSync(path.join(ROOT, 'public/phenotypes.json'), 'utf8'));
 const store = new Store(path.join(ROOT, 'data'));
 
-// Faces you've kept from earlier runs (local-data/db.json + local-data/images). Shown while the
-// main pool has fewer than FALLBACK_UNTIL faces, e.g. right after a restart or while Kaggle is working.
+// Faces you've kept from earlier runs (local-data/db.json + local-data/images). Last resort:
+// shown only while the main pool has fewer than FALLBACK_UNTIL faces (default: when it's empty).
 // Read-only: the server never changes this folder.
 const FALLBACK_DIR = path.resolve(ROOT, process.env.FALLBACK_DIR || 'local-data');
-const FALLBACK_UNTIL = Number(process.env.FALLBACK_UNTIL || 10);
+const FALLBACK_UNTIL = Number(process.env.FALLBACK_UNTIL || 1); // 1 = local-data only when the pool is empty
 const fallback = fs.existsSync(path.join(FALLBACK_DIR, 'db.json')) ? new Store(FALLBACK_DIR, { readOnly: true }) : null;
 // Pick which pool answers this request.
 const activeStore = () => (fallback && fallback.count() && store.count() < FALLBACK_UNTIL ? fallback : store);
@@ -119,7 +120,7 @@ async function makeOne(p) {
       const id = crypto.randomBytes(6).toString('hex');
       store.add({
         id, file: `${id}.webp`, createdAt: Date.now(), views: 0,
-        provider: p.id, model, seed: profile.seed,
+        provider: p.id, batch: null, model, seed: profile.seed,
         region_id: profile.region_id, region_label: profile.region_label, is_mixed_heritage: profile.is_mixed_heritage,
         cohort: profile.cohort, age: profile.age, gender: profile.gender, city: profile.city,
         hairstyle: profile.hairstyle, skin: profile.skin,
@@ -219,13 +220,13 @@ const server = http.createServer((req, res) => {
   if (p === '/api/face') {
     const exclude = new Set((url.searchParams.get('exclude') || '').split(',').filter(Boolean));
     const from = activeStore();
-    const r = from.random(exclude);
+    const r = from.random(exclude, FRESH_MIN);
     if (!r) return send(res, 503, { error: 'warming up', pool: 0, providers: [...providers.map((x) => x.id), ...(kaggle.enabled() ? ['kaggle'] : [])] }, 'application/json', { 'Retry-After': '10' });
     return send(res, 200, publicRecord(r, from), 'application/json', { 'Cache-Control': 'no-store' });
   }
   if (p === '/face.webp' || p === '/image') { // a random face, straight as an image (TPDNE-style)
     const from = activeStore();
-    const r = from.random();
+    const r = from.random(new Set(), FRESH_MIN);
     if (!r) return send(res, 503, { error: 'warming up' });
     return serveFile(res, path.join(from.imgDir, r.file), 'no-store');
   }
@@ -238,6 +239,7 @@ const server = http.createServer((req, res) => {
   if (p === '/api/stats') {
     return send(res, 200, {
       pool: store.stats(), target: TARGET_POOL, rotate: ROTATE, running,
+      showing: (() => { const f = store.freshSet(FRESH_MIN); return { faces: f.rows.length, kaggleBatch: f.batch, since: f.since ? new Date(f.since).toISOString() : null }; })(),
       fallback: fallback ? { dir: path.basename(FALLBACK_DIR), faces: fallback.count(), showing: activeStore() === fallback, until: FALLBACK_UNTIL } : null,
       providers: providers.map((x) => ({ id: x.id, label: x.label, dailyLimit: x.dailyLimit, ...state[x.id],
         cooldownSeconds: Math.max(0, Math.round((state[x.id].cooldownUntil - Date.now()) / 1000)) })),

@@ -1,0 +1,109 @@
+# This African Does Not Exist — fully automatic, no server.
+#
+# Every hour: check the Kaggle GPU batch; when one finishes, import its faces into the pool
+# (newest 500 kept on the `pool` branch) and redeploy the site to GitHub Pages.
+# Once a day (KAGGLE_EVERY_HOURS): start a new batch.
+#
+# One-time setup (repo Settings):
+#   Secrets and variables → Actions → Secrets:   KAGGLE_API_TOKEN = your KGAT_… token
+#   Secrets and variables → Actions → Variables: KAGGLE_USERNAME  = your Kaggle username
+#   Pages → Build and deployment → Source: GitHub Actions
+
+name: faces
+
+on:
+  schedule:
+    - cron: "17 * * * *"      # hourly, at :17
+  workflow_dispatch:           # "Run workflow" button in the Actions tab
+  push:
+    branches: [main]
+    paths-ignore: ["**.md"]
+
+permissions:
+  contents: write              # save the pool branch
+  pages: write
+  id-token: write
+
+concurrency:
+  group: faces
+  cancel-in-progress: false
+
+env:
+  KAGGLE_KERNEL_SLUG: thisafrican-faces-cloud
+  KAGGLE_BATCH_SIZE: "120"
+  KAGGLE_EVERY_HOURS: "24"
+  KAGGLE_MAX_MINUTES: "150"
+  KAGGLE_MODEL: sdxl           # RealVisXL. "zimage" ran out of memory on Kaggle's T4s.
+  KAGGLE_CMD: kaggle
+  TARGET_POOL: "500"
+  FRESH_MIN: "20"
+
+jobs:
+  cycle:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    outputs:
+      deploy: ${{ steps.cycle.outputs.deploy }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Get the pool branch
+        env:
+          TOKEN: ${{ github.token }}
+        run: |
+          url="https://x-access-token:${TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          if git ls-remote --exit-code --heads "$url" pool >/dev/null 2>&1; then
+            git clone -q --depth 1 --branch pool "$url" pool
+          else
+            mkdir pool && git -C pool init -q && git -C pool remote add origin "$url"
+          fi
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -q kaggle six
+
+      - name: Kaggle cycle
+        id: cycle
+        env:
+          KAGGLE_USERNAME: ${{ vars.KAGGLE_USERNAME }}
+          KAGGLE_API_TOKEN: ${{ secrets.KAGGLE_API_TOKEN }}
+        run: node tools/cycle.mjs pool
+
+      - name: Save the pool branch
+        if: steps.cycle.outputs.save == 'true'
+        run: |
+          cd pool
+          git config user.name "faces-bot"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          # one commit only (no history), so the repo never grows with old faces
+          git checkout -q --orphan next
+          git add -A
+          git commit -qm "pool $(date -u +%Y-%m-%dT%H:%MZ)"
+          git push -qf origin next:pool
+
+      - name: Build the site
+        if: steps.cycle.outputs.deploy == 'true' || github.event_name != 'schedule'
+        run: node tools/build-site.mjs pool _site
+
+      - uses: actions/upload-pages-artifact@v3
+        if: steps.cycle.outputs.deploy == 'true' || github.event_name != 'schedule'
+        with:
+          path: _site
+
+  deploy:
+    needs: cycle
+    if: needs.cycle.outputs.deploy == 'true' || github.event_name != 'schedule'
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

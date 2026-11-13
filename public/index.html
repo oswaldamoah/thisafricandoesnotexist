@@ -106,7 +106,7 @@ const imgs = [$('imgA'), $('imgB')];
 let front = 0;
 let current = null;
 let queued = null;          // preloaded next face
-let mode = 'server';        // 'server' (pool from server.js) or 'static' (browser → Pollinations directly)
+let mode = 'server';        // 'server' (server.js API) → 'pool' (static site: faces/manifest.json) → 'static' (Pollinations)
 let config = null;
 const seen = [];
 
@@ -119,7 +119,58 @@ async function fromServer() {
   return { ...face, src: face.image };
 }
 
-// ---------- static mode (no server: e.g. GitHub Pages) ----------
+// ---------- pool mode (GitHub Pages: faces made by the hourly Action) ----------
+const manifests = { faces: null, local: null };
+let manifestAt = 0;
+let latestBatch = null;
+const seenIds = new Set();
+
+async function loadManifest(dir) {
+  try {
+    const r = await fetch(`./${dir}/manifest.json?v=${Math.floor(Date.now() / 60000)}`, { cache: 'no-store' });
+    if (!r.ok) return null;
+    const j = await r.json();
+    return j.faces && j.faces.length ? j : null;
+  } catch { return null; }
+}
+
+// Same rule as the server: only the newest Kaggle batch (+ anything newer); top up if it's tiny.
+function freshSet(m) {
+  const faces = m.faces;
+  const kaggle = faces.filter((f) => f.provider === 'kaggle' && f.batch);
+  if (!kaggle.length) return { set: faces, batch: null };
+  const newest = kaggle.reduce((a, b) => (b.createdAt > a.createdAt ? b : a));
+  const since = Math.min(...kaggle.filter((f) => f.batch === newest.batch).map((f) => f.createdAt));
+  let set = faces.filter((f) => f.createdAt >= since);
+  const min = m.freshMin || 20;
+  if (set.length < min) set = [...faces].sort((a, b) => b.createdAt - a.createdAt).slice(0, min);
+  return { set, batch: newest.batch };
+}
+
+async function refreshManifests(force = false) {
+  if (!force && Date.now() - manifestAt < 5 * 60e3) return;
+  manifestAt = Date.now();
+  manifests.faces = await loadManifest('faces');
+  if (!manifests.faces && !manifests.local) manifests.local = await loadManifest('local-data');
+  const b = manifests.faces ? freshSet(manifests.faces).batch : null;
+  if (latestBatch !== null && b !== latestBatch) queued = null; // a new batch landed: drop the preloaded old face
+  latestBatch = b;
+}
+
+async function fromPool() {
+  await refreshManifests();
+  const m = manifests.faces || manifests.local;
+  if (!m) throw new Error('no faces published yet');
+  const set = manifests.faces ? freshSet(m).set : m.faces;
+  let choices = set.filter((f) => !seenIds.has(f.id));
+  if (!choices.length) { set.forEach((f) => seenIds.delete(f.id)); choices = set; }
+  const f = choices[Math.floor(Math.random() * choices.length)];
+  seenIds.add(f.id);
+  return { ...f, src: f.src, local: !manifests.faces };
+}
+setInterval(() => { if (mode === 'pool') refreshManifests(true); }, 5 * 60e3);
+
+// ---------- static mode (no faces published at all) ----------
 async function fromStatic() {
   config ||= await (await fetch('./phenotypes.json')).json();
   const p = sampleProfile(config);
@@ -135,8 +186,12 @@ async function fetchFace() {
     try { return await fromServer(); }
     catch (e) {
       if (e.warming) throw e;
-      mode = 'static';
+      mode = 'pool';
     }
+  }
+  if (mode === 'pool') {
+    try { return await fromPool(); }
+    catch { mode = 'static'; }
   }
   return fromStatic();
 }
@@ -174,9 +229,9 @@ function show(face) {
   $('loading').classList.add('hidden');
 
   $('who').innerHTML = `${face.age}, ${face.gender} <small>${face.city}</small>`;
-  $('mode').textContent = mode === 'server' ? 'pre-generated pool' : 'live · pollinations';
+  $('mode').textContent = mode === 'server' ? 'pre-generated pool' : mode === 'pool' ? (face.local ? 'archive' : 'newest faces') : 'live · pollinations';
   $('download').href = face.src;
-  $('download').setAttribute('download', `thisafricandoesnotexist-${face.id}.${mode === 'server' ? 'webp' : 'jpg'}`);
+  $('download').setAttribute('download', `thisafricandoesnotexist-${face.id}.${mode === 'static' ? 'jpg' : 'webp'}`);
   const rows = [
     ['Region profile', face.region_label],
     ['Model', `${face.model} via ${face.provider}`],
@@ -184,7 +239,7 @@ function show(face) {
   ];
   $('meta').innerHTML = rows.map(([k, v]) => `<dt>${k}</dt><dd>${String(v ?? '').replace(/</g, '&lt;')}</dd>`).join('');
   $('prompt').textContent = face.prompt;
-  history.replaceState(null, '', mode === 'server' ? `#${face.id}` : location.pathname);
+  history.replaceState(null, '', mode === 'static' ? location.pathname : `#${face.id}`);
 }
 
 let busy = false;
@@ -212,7 +267,15 @@ async function boot() {
   if (id) {
     try {
       const r = await fetch(`/api/face/${id}`);
-      if (r.ok) { const f = await r.json(); show(await preload({ ...f, src: f.image })); queued = getReadyFace().catch(() => null); return; }
+      if (r.ok && (r.headers.get('content-type') || '').includes('json')) {
+        const f = await r.json(); show(await preload({ ...f, src: f.image })); queued = getReadyFace().catch(() => null); return;
+      }
+    } catch {}
+    try { // static site: look the id up in the published manifests
+      await refreshManifests(true);
+      if (!manifests.local) manifests.local = await loadManifest('local-data');
+      const f = [...(manifests.faces?.faces || []), ...(manifests.local?.faces || [])].find((x) => x.id === id);
+      if (f) { mode = 'pool'; seenIds.add(f.id); show(await preload({ ...f })); queued = getReadyFace().catch(() => null); return; }
     } catch {}
   }
   next();
