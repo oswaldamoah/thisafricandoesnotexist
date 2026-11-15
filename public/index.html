@@ -231,7 +231,7 @@ function show(face) {
   $('loading').classList.add('hidden');
 
   $('who').innerHTML = `${face.age}, ${face.gender} <small>${face.city}</small>`;
-  $('mode').textContent = mode === 'server' ? 'pre-generated pool' : mode === 'pool' ? (face.local ? 'archive' : 'newest faces') : 'live · pollinations';
+  if ($('mode')) $('mode').textContent = mode === 'server' ? 'pre-generated pool' : mode === 'pool' ? (face.local ? 'archive' : 'newest faces') : 'live · pollinations';
   $('download').href = face.src;
   $('download').setAttribute('download', `thisafricandoesnotexist-${face.id}.${mode === 'static' ? 'jpg' : 'webp'}`);
   const rows = [
